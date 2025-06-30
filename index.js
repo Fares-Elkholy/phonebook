@@ -1,5 +1,8 @@
+require('dotenv').config()
 const express = require('express')
+const Phone = require('./models/phone')
 const morgan = require('morgan')
+
 
 const app = express()
 
@@ -49,35 +52,29 @@ let persons = [
 ]
 
 app.get('/api/persons', (request, response) => {
-    response.json(persons)
+    Phone.find({}).then(persons => {
+        response.json(persons)
+    })
 })
 
 app.get('/info', (request, response) => {
-    const no = 3
-    const html = `
-        Phonebook has info for ${persons.length} people <br />
-        ${new Date()}
-    `
-    response.send(html)
-
+    let no = null
+    Phone.countDocuments({}).then(count => {
+        const html = `
+            Phonebook has info for ${count} people <br />
+            ${new Date()}
+        `
+        response.send(html)
+    })
 })
 
 app.get('/api/persons/:id', (req, res) => {
-    const id = req.params.id
-
-    const person = persons.find(p => p.id === id)
-
-    if (!person) {
-        return res.status(404).end()
-    } 
-
-    res.json(person)
-    
+    Phone.findById(req.params.id).then(foundNumber => {
+        response.json(foundNumber)
+    })
 })
 
 app.post('/api/persons', (req, res) => {
-    const id = Math.floor(Math.random() * 100000000)
-
     const body = req.body
 
     if (!body.name) {
@@ -90,21 +87,15 @@ app.post('/api/persons', (req, res) => {
             "error": "number is missing!"
         })
     }
-
-    if (persons.find(p => p.name.toLowerCase() === body.name.toLowerCase())) {
-        return res.status(400).json({
-            "error": "name must be unique"
-        })
-    }
     
-    const person = {
-        id: id,
+    const person = new Phone({
         name: body.name,
-        number: body.number
-    }
+        number: body.number,
+    })
     
-    persons = persons.concat(person)
-    res.json(person)
+    person.save().then(savedPerson => {
+        res.json(savedPerson)
+    }).catch(error => error.message)
 })
 
 
