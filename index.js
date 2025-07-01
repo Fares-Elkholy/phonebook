@@ -28,29 +28,6 @@ app.use(morgan(function (tokens, req, res) {
 )
 
 
-let persons = [
-    { 
-      "id": "1",
-      "name": "Arto Hellas", 
-      "number": "040-123456"
-    },
-    { 
-      "id": "2",
-      "name": "Ada Lovelace", 
-      "number": "39-44-5323523"
-    },
-    { 
-      "id": "3",
-      "name": "Dan Abramov", 
-      "number": "12-43-234345"
-    },
-    { 
-      "id": "4",
-      "name": "Mary Poppendieck", 
-      "number": "39-23-6423122"
-    }
-]
-
 app.get('/api/persons', (request, response) => {
     Phone.find({}).then(persons => {
         response.json(persons)
@@ -70,7 +47,7 @@ app.get('/info', (request, response) => {
 
 app.get('/api/persons/:id', (req, res) => {
     Phone.findById(req.params.id).then(foundNumber => {
-        response.json(foundNumber)
+        res.json(foundNumber)
     })
 })
 
@@ -98,14 +75,50 @@ app.post('/api/persons', (req, res) => {
     }).catch(error => error.message)
 })
 
+app.put('/api/persons/:id', (req, res, next) => {
+    const id = req.params.id
+    const { name, number } = req.body
 
-app.delete('/api/persons/:id', (req, res) => {
+    Phone.findById(id).then(person => {
+        if (!person) {// if person is not in DB
+            return res.status(404).end()
+        }
+        person.name = name
+        person.number = number
+
+        person.save().then(updatedPerson => {
+            res.json(updatedPerson)
+        })
+    }).catch(error => {
+        console.log(error)
+        next(error)
+    })
+})
+
+
+app.delete('/api/persons/:id', (req, res, next) => {
     const id = req.params.id
 
-    persons = persons.filter(p => p.id !== id)
+    Phone.findByIdAndDelete(id)
+        .then(result => {
+            res.status(204).end()
+        })
+        .catch(error => next(error))
+
     res.status(204).end()
 })
 
+const errorHandler = (error, req, res, next) => {
+    console.log(error.message)
+
+    if (error.name === 'CastError') {
+        return res.status(400).send({ error: 'malformatted id' })
+    }
+
+    next(error)
+}
+
+app.use(errorHandler)
 
 const PORT = 3001
 app.listen(PORT)
